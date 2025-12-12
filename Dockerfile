@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar las dependencias
-RUN npm install
+RUN npm ci
 
 # Copiar el código fuente
 COPY . .
@@ -20,4 +20,4 @@ RUN npm run build
 EXPOSE 2030
 
 # Comando para ejecutar la aplicación
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

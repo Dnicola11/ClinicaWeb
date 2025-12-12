@@ -11,7 +11,7 @@ services:
     networks:
       - clinica-network
     environment:
-      - VITE_API_URL=http://localhost:2030
+      - VITE_API_URL=http://api:2030
 
   # Backend API
   api:
@@ -22,7 +22,7 @@ services:
     depends_on:
       - mongo
     environment:
-      - MONGO_URI=mongodb://mongo:27017/clinica
+      - MONGODB_URI=mongodb://mongo:27017/clinica
       - JWT_SECRET=tu_clave_secreta_super_segura_cambiala_en_produccion
       - PORT=2030
     networks:
