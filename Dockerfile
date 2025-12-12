@@ -20,4 +20,4 @@ RUN npm run build
 EXPOSE 2030
 
 # Comando para ejecutar la aplicación
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]
