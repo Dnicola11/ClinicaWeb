@@ -1,0 +1,29 @@
+version: '3'
+services:
+  api:
+    build: .
+    container_name: clinica-api
+    ports:
+      - 2030:2030
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/clinica
+    networks:
+      - clinica-network
+  mongo:
+    image: mongo
+    container_name: mongo
+    ports:
+      - 27017:27017
+    networks:
+      - clinica-network
+    volumes:
+      - mongo-data:/data/db
+
+networks:
+  clinica-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
