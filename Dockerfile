@@ -1,5 +1,5 @@
 # Usar la imagen oficial de Node.js
-FROM node:16
+FROM node:18-alpine
 
 # Establecer el directorio de trabajo
 WORKDIR /app
@@ -13,7 +13,10 @@ RUN npm install
 # Copiar el código fuente
 COPY . .
 
-# Exponer el puerto 3000
+# Compilar la aplicación
+RUN npm run build
+
+# Exponer el puerto 2030
 EXPOSE 2030
 
 # Comando para ejecutar la aplicación

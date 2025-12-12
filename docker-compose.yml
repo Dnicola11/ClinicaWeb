@@ -1,21 +1,39 @@
-version: '3'
+version: '3.8'
 services:
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: clinica-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - clinica-network
+    environment:
+      - VITE_API_URL=http://localhost:2030
+
+  # Backend API
   api:
     build: .
     container_name: clinica-api
     ports:
-      - 2030:2030
+      - "2030:2030"
     depends_on:
       - mongo
     environment:
       - MONGO_URI=mongodb://mongo:27017/clinica
+      - JWT_SECRET=tu_clave_secreta_super_segura_cambiala_en_produccion
+      - PORT=2030
     networks:
       - clinica-network
+
+  # MongoDB
   mongo:
-    image: mongo
-    container_name: mongo
+    image: mongo:latest
+    container_name: clinica-mongo
     ports:
-      - 27017:27017
+      - "27017:27017"
     networks:
       - clinica-network
     volumes:
