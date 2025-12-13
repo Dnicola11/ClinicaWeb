@@ -69,7 +69,9 @@ export interface CreateAppointmentData {
   time: string;
   reason: string;
   doctor: string;
+  specialty?: string;
   patientId?: string;
+  userId?: string;
 }
 
 export interface UpdateAppointmentData {

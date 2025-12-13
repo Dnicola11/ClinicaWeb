@@ -26,33 +26,54 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-2xl">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 flex items-center justify-center px-6 py-10 text-slate-50">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-10 shadow-2xl shadow-indigo-900/40 backdrop-blur">
+          <div className="flex items-center space-x-3">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sistema de Citas Médicas
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Inicia sesión para continuar
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-          <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Correo Electrónico
+              <p className="text-xl font-semibold">Clínica</p>
+              <p className="text-sm text-slate-300">Gestión integral de citas médicas</p>
+            </div>
+          </div>
+
+          <h1 className="mt-8 text-4xl font-bold leading-tight">Bienvenido de nuevo</h1>
+          <p className="mt-2 text-slate-300">Accede al panel para gestionar pacientes, usuarios y citas.</p>
+
+          <div className="mt-8 grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-xs uppercase tracking-wide text-slate-300">Citas</p>
+              <p className="text-2xl font-semibold">Rápidas</p>
+            </div>
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-xs uppercase tracking-wide text-slate-300">Pacientes</p>
+              <p className="text-2xl font-semibold">Seguros</p>
+            </div>
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-xs uppercase tracking-wide text-slate-300">Equipo</p>
+              <p className="text-2xl font-semibold">Conectado</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-10 shadow-2xl shadow-indigo-900/20">
+          <h2 className="text-2xl font-semibold text-slate-900">Inicia sesión</h2>
+          <p className="text-sm text-slate-500 mt-1">Usa tus credenciales de administrador o médico.</p>
+
+          <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                Correo electrónico
               </label>
               <input
                 id="email"
@@ -62,12 +83,13 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
                 placeholder="correo@ejemplo.com"
               />
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700">
                 Contraseña
               </label>
               <input
@@ -78,35 +100,30 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
                 placeholder="••••••••"
               />
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
-          </div>
-
-          <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full inline-flex justify-center items-center px-4 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-indigo-600 shadow-lg shadow-indigo-500/30 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-white disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+              {loading ? 'Iniciando sesión...' : 'Ingresar'}
             </button>
-          </div>
 
-          <div className="text-center text-sm text-gray-600">
-            <p>Credenciales de prueba:</p>
-            <p className="font-mono text-xs mt-1">admin@clinica.com / admin123</p>
-          </div>
-        </form>
+            <div className="text-sm text-slate-500 text-center">
+              <p>Credenciales de prueba</p>
+              <p className="font-mono text-xs mt-1 text-slate-700">admin@clinica.com / admin123</p>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
