@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react';
 import { userService } from '../services/userService';
-import type { User, CreateUserData } from '../types';
+import type { User, CreateUserData, UpdateUserData } from '../types';
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<CreateUserData>({
     name: '',
     email: '',
     password: '',
-    role: 'user',
+    role: 'patient',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const specialties: Record<string, string> = {
+    'carlos@clinica.com': 'Cardiología',
+    'sofia@clinica.com': 'Pediatría',
+    'valentina@clinica.com': 'Dermatología',
+    'alejandro@clinica.com': 'Traumatología',
+    'lucia@clinica.com': 'Ginecología',
+  };
 
   useEffect(() => {
     loadUsers();
@@ -36,18 +45,29 @@ export default function Users() {
     setSuccess('');
 
     try {
-      await userService.create(formData);
-      setSuccess('Usuario creado exitosamente');
+      if (editingUser) {
+        const payload: UpdateUserData = {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role as any,
+        };
+        await userService.update(editingUser._id, payload);
+        setSuccess('Usuario actualizado exitosamente');
+      } else {
+        await userService.create(formData);
+        setSuccess('Usuario creado exitosamente');
+      }
       setShowModal(false);
+      setEditingUser(null);
       setFormData({
         name: '',
         email: '',
         password: '',
-        role: 'user',
+        role: 'patient',
       });
       loadUsers();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear el usuario');
+      setError(err.response?.data?.message || 'Error al guardar el usuario');
     }
   };
 
@@ -71,6 +91,12 @@ export default function Users() {
     );
   }
 
+  const sections = [
+    { title: 'Administradores', key: 'admin', color: 'border-purple-500/40' },
+    { title: 'Doctores', key: 'doctor', color: 'border-cyan-500/40' },
+    { title: 'Pacientes', key: 'patient', color: 'border-emerald-500/40' },
+  ];
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 text-slate-100">
       <div className="sm:flex sm:items-center">
@@ -80,7 +106,16 @@ export default function Users() {
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingUser(null);
+              setFormData({
+                name: '',
+                email: '',
+                password: '',
+                role: 'patient',
+              });
+              setShowModal(true);
+            }}
             className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-transparent"
           >
             Nuevo Usuario
@@ -101,65 +136,102 @@ export default function Users() {
       )}
 
       <div className="mt-8 flex flex-col">
-        <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-            <div className="overflow-hidden border border-white/10 bg-white/5 shadow-xl shadow-indigo-900/30 md:rounded-2xl backdrop-blur">
-              <table className="min-w-full divide-y divide-white/10">
-                <thead className="bg-white/10">
-                  <tr>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Nombre</th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Email</th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Rol</th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Creado</th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {users.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-3 py-4 text-sm text-slate-300 text-center">
-                        No hay usuarios registrados
-                      </td>
-                    </tr>
-                  ) : (
-                    users.map((user) => (
-                      <tr key={user._id} className="hover:bg-white/5 transition">
-                        <td className="whitespace-nowrap px-3 py-4 text-sm font-semibold text-white">
-                          {user.name}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
-                          {user.email}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-5 ${
-                              user.role === 'admin'
-                                ? 'bg-purple-400/20 text-purple-100'
-                                : 'bg-emerald-400/20 text-emerald-100'
-                            }`}
-                          >
-                            {user.role === 'admin' ? 'Administrador' : 'Usuario'}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
-                          {new Date(user.createdAt).toLocaleDateString('es-ES')}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
-                          <button
-                            onClick={() => handleDelete(user._id)}
-                            className="text-rose-300 hover:text-rose-200 font-semibold"
-                          >
-                            Eliminar
-                          </button>
-                        </td>
+        {sections.map((section) => {
+          const list = users.filter((u) => u.role === section.key);
+          return (
+            <div key={section.key} className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8 mt-6">
+              <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+                <div className={`overflow-hidden border ${section.color} bg-white/5 shadow-xl shadow-indigo-900/30 md:rounded-2xl backdrop-blur`}>
+                  <div className="px-4 py-3 border-b border-white/10">
+                    <h2 className="text-lg font-semibold text-white">{section.title}</h2>
+                  </div>
+                  <table className="min-w-full divide-y divide-white/10">
+                    <thead className="bg-white/10">
+                      <tr>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Nombre</th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Email</th>
+                        {section.key === 'doctor' && (
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Especialidad</th>
+                        )}
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Rol</th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Creado</th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Acciones</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {list.length === 0 ? (
+                        <tr>
+                          <td colSpan={section.key === 'doctor' ? 6 : 5} className="px-3 py-4 text-sm text-slate-300 text-center">
+                            Sin usuarios en esta categoría
+                          </td>
+                        </tr>
+                      ) : (
+                        list.map((user) => (
+                          <tr key={user._id} className="hover:bg-white/5 transition">
+                            <td className="whitespace-nowrap px-3 py-4 text-sm font-semibold text-white">
+                              {user.name}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
+                              {user.email}
+                            </td>
+                            {section.key === 'doctor' && (
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
+                                {specialties[user.email] || 'No asignada'}
+                              </td>
+                            )}
+                            <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-5 ${
+                                  user.role === 'admin'
+                                    ? 'bg-purple-400/20 text-purple-100'
+                                    : user.role === 'doctor'
+                                    ? 'bg-cyan-400/20 text-cyan-100'
+                                    : 'bg-emerald-400/20 text-emerald-100'
+                                }`}
+                              >
+                                {user.role === 'admin'
+                                  ? 'Administrador'
+                                  : user.role === 'doctor'
+                                  ? 'Doctor'
+                                  : 'Paciente'}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
+                              {new Date(user.createdAt).toLocaleDateString('es-ES')}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200 space-x-3">
+                              <button
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setFormData({
+                                    name: user.name,
+                                    email: user.email,
+                                    password: '',
+                                    role: user.role as any,
+                                  });
+                                  setShowModal(true);
+                                }}
+                                className="text-indigo-200 hover:text-white font-semibold"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDelete(user._id)}
+                                className="text-rose-300 hover:text-rose-200 font-semibold"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       {/* Modal */}
@@ -169,10 +241,15 @@ export default function Users() {
             <form onSubmit={handleSubmit}>
               <div className="bg-white px-6 pt-6 pb-4 sm:p-8 sm:pb-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-slate-900">Nuevo Usuario</h3>
+                  <h3 className="text-xl font-semibold text-slate-900">
+                    {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+                  </h3>
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      setShowModal(false);
+                      setEditingUser(null);
+                    }}
                     className="text-slate-400 hover:text-slate-600"
                   >
                     ✕
@@ -199,24 +276,27 @@ export default function Users() {
                       className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-700">Contraseña</label>
-                    <input
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
-                    />
-                  </div>
+                  {!editingUser && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-slate-700">Contraseña</label>
+                      <input
+                        type="password"
+                        required
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-slate-700">Rol</label>
                     <select
                       value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'patient' | 'doctor' })}
                       className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
                     >
-                      <option value="user">Usuario</option>
+                      <option value="patient">Paciente</option>
+                      <option value="doctor">Doctor</option>
                       <option value="admin">Administrador</option>
                     </select>
                   </div>
@@ -225,14 +305,17 @@ export default function Users() {
               <div className="bg-slate-50 px-6 py-4 sm:px-8 sm:flex sm:flex-row-reverse gap-3">
                 <button
                   type="submit"
-                  className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-sm font-semibold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 sm:w-auto"
+                  className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-sm font-medium text-white hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
-                  Crear Usuario
+                  {editingUser ? 'Guardar cambios' : 'Crear Usuario'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 sm:mt-0 sm:w-auto"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto"
                 >
                   Cancelar
                 </button>

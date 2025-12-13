@@ -31,10 +31,13 @@ export default function Appointments() {
   }>({ open: false });
 
   const handleOpenStatusModal = (appointment: Appointment) => {
+    const defaultStatus =
+      (!isAdmin && !isDoctor && isPatient) ? 'postponed' : appointment.status;
+
     setStatusModal({
       open: true,
       appointment,
-      status: appointment.status,
+      status: defaultStatus as Appointment['status'],
       postponedDate: appointment.postponedDate?.slice(0, 10) || appointment.date.slice(0, 10),
       postponedTime: appointment.postponedTime || appointment.time,
       postponeReason: appointment.postponeReason,
@@ -438,12 +441,14 @@ export default function Appointments() {
                                 Editar
                               </button>
                             )}
-                            <button
-                              onClick={() => handleOpenStatusModal(appointment)}
-                              className="text-cyan-200 hover:text-white font-semibold"
-                            >
-                              Estado
-                            </button>
+                            {(isAdmin || isDoctor) && (
+                              <button
+                                onClick={() => handleOpenStatusModal(appointment)}
+                                className="text-cyan-200 hover:text-white font-semibold"
+                              >
+                                Estado
+                              </button>
+                            )}
                             {canDelete && (
                               <button
                                 onClick={() => handleDelete(appointment._id)}

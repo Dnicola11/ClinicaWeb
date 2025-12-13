@@ -149,9 +149,13 @@ export default function Login() {
 
             <div className="text-sm text-slate-500 text-center space-y-1">
               <p>Credenciales de prueba</p>
-              <p className="font-mono text-xs text-slate-700">admin@clinica.com / admin123</p>
-              <p className="font-mono text-xs text-slate-700">doctor@clinica.com / doctor123</p>
-              <p className="font-mono text-xs text-slate-700">paciente@clinica.com / paciente123</p>
+              <p className="font-mono text-xs text-slate-700">admin@clinica.com / admin123 (Admin)</p>
+              <p className="font-mono text-xs text-slate-700">carlos@clinica.com / doctor123 (Doctor)</p>
+              <p className="font-mono text-xs text-slate-700">sofia@clinica.com / doctor123 (Doctor)</p>
+              <p className="font-mono text-xs text-slate-700">valentina@clinica.com / doctor123 (Doctor)</p>
+              <p className="font-mono text-xs text-slate-700">alejandro@clinica.com / doctor123 (Doctor)</p>
+              <p className="font-mono text-xs text-slate-700">lucia@clinica.com / doctor123 (Doctor)</p>
+              <p className="font-mono text-xs text-slate-700">paciente@clinica.com / paciente123 (Paciente)</p>
             </div>
           </form>
         </div>
