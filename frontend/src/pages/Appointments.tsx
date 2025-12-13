@@ -49,6 +49,10 @@ export default function Appointments() {
     };
 
     if (statusModal.status === 'postponed') {
+      if (!statusModal.postponedDate || !statusModal.postponedTime) {
+        setError('Define fecha y hora de postergación');
+        return;
+      }
       payload.postponedDate = statusModal.postponedDate;
       payload.postponedTime = statusModal.postponedTime;
       payload.postponeReason = statusModal.postponeReason;
@@ -107,14 +111,18 @@ export default function Appointments() {
 
     try {
       if (editingAppointment) {
-        await appointmentService.update(editingAppointment._id, {
+        const payload: UpdateAppointmentData = {
           date: formData.date,
           time: formData.time,
-          reason: formData.reason,
-          doctor: formData.doctor ? `${formData.doctor} (${formData.specialty || 'General'})` : '',
-          specialty: formData.specialty,
-          patientName: formData.patientName,
-        });
+        };
+        // Solo admin puede modificar todo; paciente/doctor mantienen campos originales
+        if (isAdmin) {
+          payload.reason = formData.reason;
+          payload.doctor = formData.doctor ? `${formData.doctor} (${formData.specialty || 'General'})` : '';
+          payload.specialty = formData.specialty;
+          payload.patientName = formData.patientName;
+        }
+        await appointmentService.update(editingAppointment._id, payload);
         setSuccess('Cita actualizada');
       } else {
         await appointmentService.create({
@@ -131,7 +139,7 @@ export default function Appointments() {
       setFormData({ date: '', time: '', reason: '', doctor: '', specialty: '', patientName: user?.name || '' });
       loadAppointments();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear la cita');
+      setError(err.response?.data?.message || 'Error al guardar la cita');
     }
   };
 
@@ -239,90 +247,92 @@ export default function Appointments() {
 
       {/* Modal estado */}
       {statusModal.open && statusModal.appointment && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-slate-900/70 backdrop-blur px-4 pt-24 pb-10 overflow-y-auto">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-white px-6 pt-6 pb-4 sm:p-8 sm:pb-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-slate-900">Estado de la cita</h3>
-                <button
-                  type="button"
-                  onClick={() => setStatusModal({ open: false })}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-sm text-slate-500 mt-1">
-                {statusModal.appointment.patientName} — {statusModal.appointment.doctor}
-              </p>
-
-              <div className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">Estado</label>
-                  <select
-                    value={statusModal.status}
-                    onChange={(e) => setStatusModal((prev) => ({ ...prev, status: e.target.value as Appointment['status'] }))}
-                    className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border bg-white"
-                  >
-                    {isAdmin && (
-                      <>
-                        <option value="pending">Pendiente</option>
-                        <option value="confirmed">Confirmada</option>
-                        <option value="attended">Atendida</option>
-                        <option value="postponed">Postergada</option>
-                        <option value="cancelled">Cancelada</option>
-                        <option value="completed">Completada</option>
-                      </>
-                    )}
-                    {isDoctor && !isAdmin && (
-                      <>
-                        <option value="pending">Pendiente</option>
-                        <option value="attended">Atendida</option>
-                        <option value="postponed">Postergada</option>
-                        <option value="cancelled">Cancelada</option>
-                      </>
-                    )}
-                    {isPatient && !isAdmin && !isDoctor && (
-                      <option value="postponed">Postergada</option>
-                    )}
-                  </select>
-                </div>
-
-                {statusModal.status === 'postponed' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-slate-700">Nueva fecha</label>
-                      <input
-                        type="date"
-                        value={statusModal.postponedDate || ''}
-                        onChange={(e) => setStatusModal((prev) => ({ ...prev, postponedDate: e.target.value }))}
-                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-slate-700">Nueva hora</label>
-                      <input
-                        type="time"
-                        value={statusModal.postponedTime || ''}
-                        onChange={(e) => setStatusModal((prev) => ({ ...prev, postponedTime: e.target.value }))}
-                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
-                      />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="block text-sm font-medium text-slate-700">Motivo</label>
-                      <textarea
-                        value={statusModal.postponeReason || ''}
-                        onChange={(e) => setStatusModal((prev) => ({ ...prev, postponeReason: e.target.value }))}
-                        rows={3}
-                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
-                        placeholder="Describe la razón de la postergación"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+        <div className="mt-8">
+          <div className="bg-white/10 border border-white/15 rounded-2xl shadow-xl shadow-indigo-900/30 backdrop-blur p-6 sm:p-8">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-white">Estado de la cita</h3>
+              <button
+                type="button"
+                onClick={() => setStatusModal({ open: false })}
+                className="text-slate-300 hover:text-white"
+              >
+                ✕
+              </button>
             </div>
-            <div className="bg-slate-50 px-6 py-4 sm:px-8 sm:flex sm:flex-row-reverse gap-3">
+            <p className="text-sm text-slate-300 mt-1">
+              {statusModal.appointment.patientName} — {statusModal.appointment.doctor}
+            </p>
+
+            <div className="mt-4 space-y-4 text-slate-900 bg-white rounded-xl p-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Estado</label>
+                <select
+                  value={statusModal.status}
+                  onChange={(e) => setStatusModal((prev) => ({ ...prev, status: e.target.value as Appointment['status'] }))}
+                  className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border bg-white"
+                >
+                  {isAdmin && (
+                    <>
+                      <option value="pending">Pendiente</option>
+                      <option value="confirmed">Confirmada</option>
+                      <option value="attended">Atendida</option>
+                      <option value="postponed">Postergar</option>
+                      <option value="cancelled">Cancelar</option>
+                      <option value="completed">Completada</option>
+                    </>
+                  )}
+                  {isDoctor && !isAdmin && (
+                    <>
+                      <option value="pending">Pendiente</option>
+                      <option value="attended">Atendida</option>
+                      <option value="postponed">Postergar</option>
+                      <option value="cancelled">Cancelar</option>
+                    </>
+                  )}
+                  {isPatient && !isAdmin && !isDoctor && (
+                    <>
+                      <option value="postponed">Postergar</option>
+                      <option value="cancelled">Cancelar</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {statusModal.status === 'postponed' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-700">Nueva fecha</label>
+                    <input
+                      type="date"
+                      value={statusModal.postponedDate || ''}
+                      onChange={(e) => setStatusModal((prev) => ({ ...prev, postponedDate: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-700">Nueva hora</label>
+                    <input
+                      type="time"
+                      value={statusModal.postponedTime || ''}
+                      onChange={(e) => setStatusModal((prev) => ({ ...prev, postponedTime: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700">Motivo</label>
+                    <textarea
+                      value={statusModal.postponeReason || ''}
+                      onChange={(e) => setStatusModal((prev) => ({ ...prev, postponeReason: e.target.value }))}
+                      rows={3}
+                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                      placeholder="Describe la razón de la postergación"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 sm:flex sm:flex-row-reverse gap-3">
               <button
                 type="button"
                 onClick={handleStatusSubmit}
@@ -333,7 +343,7 @@ export default function Appointments() {
               <button
                 type="button"
                 onClick={() => setStatusModal({ open: false })}
-                className="mt-3 w-full inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 sm:mt-0 sm:w-auto"
+                className="mt-3 w-full inline-flex justify-center rounded-lg border border-white/30 shadow-sm px-4 py-2 bg-white/10 text-sm font-semibold text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-200 sm:mt-0 sm:w-auto"
               >
                 Cancelar
               </button>
