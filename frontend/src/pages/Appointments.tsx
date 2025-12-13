@@ -35,8 +35,8 @@ export default function Appointments() {
       open: true,
       appointment,
       status: appointment.status,
-      postponedDate: appointment.postponedDate?.slice(0, 10),
-      postponedTime: appointment.postponedTime,
+      postponedDate: appointment.postponedDate?.slice(0, 10) || appointment.date.slice(0, 10),
+      postponedTime: appointment.postponedTime || appointment.time,
       postponeReason: appointment.postponeReason,
     });
   };
@@ -53,7 +53,7 @@ export default function Appointments() {
         setError('Define fecha y hora de postergación');
         return;
       }
-      payload.postponedDate = statusModal.postponedDate;
+      payload.postponedDate = `${statusModal.postponedDate}T12:00:00.000Z`;
       payload.postponedTime = statusModal.postponedTime;
       payload.postponeReason = statusModal.postponeReason;
     }
@@ -112,7 +112,7 @@ export default function Appointments() {
     try {
       if (editingAppointment) {
         const payload: UpdateAppointmentData = {
-          date: formData.date,
+          date: formData.date ? `${formData.date}T12:00:00.000Z` : undefined,
           time: formData.time,
         };
         // Solo admin puede modificar todo; paciente/doctor mantienen campos originales
@@ -128,6 +128,7 @@ export default function Appointments() {
         await appointmentService.create({
           ...formData,
           userId: user?._id || (user as any)?.id,
+          date: formData.date ? `${formData.date}T12:00:00.000Z` : '',
           doctor: formData.doctor
             ? `${formData.doctor} (${formData.specialty || 'General'})`
             : '',
