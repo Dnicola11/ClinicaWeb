@@ -6,8 +6,8 @@ import type {
 } from '../types';
 
 export const appointmentService = {
-  getAll: async (): Promise<Appointment[]> => {
-    const response = await api.get<Appointment[]>('/appointments');
+  getAll: async (params?: { userId?: string; role?: string; doctorName?: string }): Promise<Appointment[]> => {
+    const response = await api.get<Appointment[]>('/appointments', { params });
     return response.data;
   },
 
@@ -16,8 +16,10 @@ export const appointmentService = {
     return response.data;
   },
 
-  getByDate: async (date: string): Promise<Appointment[]> => {
-    const response = await api.get<Appointment[]>(`/appointments/by-date?date=${date}`);
+  getByDate: async (date: string, params?: { userId?: string; role?: string; doctorName?: string }): Promise<Appointment[]> => {
+    const response = await api.get<Appointment[]>('/appointments/by-date', {
+      params: { date, ...params },
+    });
     return response.data;
   },
 

@@ -37,8 +37,12 @@ export class AppointmentsController {
   // Obtener todas las citas (ADMIN ve todas, USER solo las suyas)
   @Get()
   // @Roles(Role.USER, Role.ADMIN) // Temporalmente deshabilitado
-  async findAll(@Query('userId') userId?: string, @Query('role') role?: string) {
-    return this.appointmentsService.findAll(userId || '', role || 'admin');
+  async findAll(
+    @Query('userId') userId?: string,
+    @Query('role') role?: string,
+    @Query('doctorName') doctorName?: string,
+  ) {
+    return this.appointmentsService.findAll(userId || '', role || 'admin', doctorName);
   }
 
   // Obtener citas por fecha
@@ -48,9 +52,10 @@ export class AppointmentsController {
     @Query('date') date: string,
     @Query('userId') userId?: string,
     @Query('role') role?: string,
+    @Query('doctorName') doctorName?: string,
   ) {
     const searchDate = new Date(date);
-    return this.appointmentsService.findByDate(searchDate, userId || '', role || 'admin');
+    return this.appointmentsService.findByDate(searchDate, userId || '', role || 'admin', doctorName);
   }
 
   // Obtener una cita por ID

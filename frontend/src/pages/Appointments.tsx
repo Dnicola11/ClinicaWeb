@@ -1,22 +1,68 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { appointmentService } from '../services/appointmentService';
-import type { Appointment, CreateAppointmentData } from '../types';
+import type { Appointment, CreateAppointmentData, UpdateAppointmentData } from '../types';
 
 export default function Appointments() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isDoctor, isPatient, user } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [formData, setFormData] = useState<CreateAppointmentData>({
     date: '',
     time: '',
     reason: '',
     doctor: '',
     specialty: '',
+    patientName: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [statusModal, setStatusModal] = useState<{
+    open: boolean;
+    appointment?: Appointment;
+    status?: Appointment['status'];
+    postponedDate?: string;
+    postponedTime?: string;
+    postponeReason?: string;
+  }>({ open: false });
+
+  const handleOpenStatusModal = (appointment: Appointment) => {
+    setStatusModal({
+      open: true,
+      appointment,
+      status: appointment.status,
+      postponedDate: appointment.postponedDate?.slice(0, 10),
+      postponedTime: appointment.postponedTime,
+      postponeReason: appointment.postponeReason,
+    });
+  };
+
+  const handleStatusSubmit = async () => {
+    if (!statusModal.appointment || !statusModal.status) return;
+
+    const payload: UpdateAppointmentData = {
+      status: statusModal.status,
+    };
+
+    if (statusModal.status === 'postponed') {
+      payload.postponedDate = statusModal.postponedDate;
+      payload.postponedTime = statusModal.postponedTime;
+      payload.postponeReason = statusModal.postponeReason;
+    }
+
+    try {
+      await appointmentService.update(statusModal.appointment._id, payload);
+      setSuccess('Cita actualizada');
+      setStatusModal({ open: false });
+      loadAppointments();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al actualizar la cita');
+    }
+  };
 
   const doctors = useMemo(
     () => [
@@ -29,13 +75,23 @@ export default function Appointments() {
     [],
   );
 
+  const canCreate = isAdmin || isPatient;
+  const canDelete = isAdmin || isPatient;
+
   useEffect(() => {
     loadAppointments();
-  }, []);
+    if (user?.role === 'patient' || user?.role === 'user') {
+      setFormData((prev) => ({ ...prev, patientName: user.name }));
+    }
+  }, [user]);
 
   const loadAppointments = async () => {
     try {
-      const data = await appointmentService.getAll();
+      const data = await appointmentService.getAll({
+        userId: user?._id || (user as any)?.id,
+        role: user?.role,
+        doctorName: user?.role === 'doctor' ? user?.name : undefined,
+      });
       setAppointments(data);
     } catch (error) {
       console.error('Error loading appointments:', error);
@@ -50,16 +106,29 @@ export default function Appointments() {
     setSuccess('');
 
     try {
-      await appointmentService.create({
-        ...formData,
-        userId: user?._id || (user as any)?.id,
-        doctor: formData.doctor
-          ? `${formData.doctor} (${formData.specialty || 'General'})`
-          : '',
-      });
-      setSuccess('Cita creada exitosamente');
+      if (editingAppointment) {
+        await appointmentService.update(editingAppointment._id, {
+          date: formData.date,
+          time: formData.time,
+          reason: formData.reason,
+          doctor: formData.doctor ? `${formData.doctor} (${formData.specialty || 'General'})` : '',
+          specialty: formData.specialty,
+          patientName: formData.patientName,
+        });
+        setSuccess('Cita actualizada');
+      } else {
+        await appointmentService.create({
+          ...formData,
+          userId: user?._id || (user as any)?.id,
+          doctor: formData.doctor
+            ? `${formData.doctor} (${formData.specialty || 'General'})`
+            : '',
+        });
+        setSuccess('Cita creada exitosamente');
+      }
       setShowModal(false);
-      setFormData({ date: '', time: '', reason: '', doctor: '', specialty: '' });
+      setEditingAppointment(null);
+      setFormData({ date: '', time: '', reason: '', doctor: '', specialty: '', patientName: user?.name || '' });
       loadAppointments();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al crear la cita');
@@ -88,6 +157,10 @@ export default function Appointments() {
         return 'bg-rose-400/20 text-rose-100';
       case 'completed':
         return 'bg-indigo-400/20 text-indigo-100';
+      case 'attended':
+        return 'bg-emerald-500/20 text-emerald-100';
+      case 'postponed':
+        return 'bg-amber-500/20 text-amber-100';
       default:
         return 'bg-white/10 text-white';
     }
@@ -103,6 +176,10 @@ export default function Appointments() {
         return 'Cancelada';
       case 'completed':
         return 'Completada';
+      case 'attended':
+        return 'Atendida';
+      case 'postponed':
+        return 'Postergada';
       default:
         return status;
     }
@@ -123,19 +200,145 @@ export default function Appointments() {
           <h1 className="text-3xl font-bold text-white">Citas médicas</h1>
           <p className="mt-2 text-sm text-slate-300">Gestiona todas las citas médicas del sistema</p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            onClick={() => setShowModal(true)}
-            className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-transparent"
-          >
-            Nueva Cita
-          </button>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex sm:space-x-3 sm:items-center">
+          {canCreate && (
+            <button
+              onClick={() => {
+                setEditingAppointment(null);
+                setFormData({
+                  date: '',
+                  time: '',
+                  reason: '',
+                  doctor: '',
+                  specialty: '',
+                  patientName: user?.name || '',
+                });
+                setShowModal(true);
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-transparent"
+            >
+              Nueva Cita
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/users')}
+              className="inline-flex items-center justify-center rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-transparent"
+            >
+              Crear usuario
+            </button>
+          )}
         </div>
       </div>
 
       {error && (
         <div className="mt-4 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg">
           {error}
+        </div>
+      )}
+
+      {/* Modal estado */}
+      {statusModal.open && statusModal.appointment && (
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-slate-900/70 backdrop-blur px-4 pt-24 pb-10 overflow-y-auto">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-white px-6 pt-6 pb-4 sm:p-8 sm:pb-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-slate-900">Estado de la cita</h3>
+                <button
+                  type="button"
+                  onClick={() => setStatusModal({ open: false })}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-sm text-slate-500 mt-1">
+                {statusModal.appointment.patientName} — {statusModal.appointment.doctor}
+              </p>
+
+              <div className="mt-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700">Estado</label>
+                  <select
+                    value={statusModal.status}
+                    onChange={(e) => setStatusModal((prev) => ({ ...prev, status: e.target.value as Appointment['status'] }))}
+                    className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border bg-white"
+                  >
+                    {isAdmin && (
+                      <>
+                        <option value="pending">Pendiente</option>
+                        <option value="confirmed">Confirmada</option>
+                        <option value="attended">Atendida</option>
+                        <option value="postponed">Postergada</option>
+                        <option value="cancelled">Cancelada</option>
+                        <option value="completed">Completada</option>
+                      </>
+                    )}
+                    {isDoctor && !isAdmin && (
+                      <>
+                        <option value="pending">Pendiente</option>
+                        <option value="attended">Atendida</option>
+                        <option value="postponed">Postergada</option>
+                        <option value="cancelled">Cancelada</option>
+                      </>
+                    )}
+                    {isPatient && !isAdmin && !isDoctor && (
+                      <option value="postponed">Postergada</option>
+                    )}
+                  </select>
+                </div>
+
+                {statusModal.status === 'postponed' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-slate-700">Nueva fecha</label>
+                      <input
+                        type="date"
+                        value={statusModal.postponedDate || ''}
+                        onChange={(e) => setStatusModal((prev) => ({ ...prev, postponedDate: e.target.value }))}
+                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-slate-700">Nueva hora</label>
+                      <input
+                        type="time"
+                        value={statusModal.postponedTime || ''}
+                        onChange={(e) => setStatusModal((prev) => ({ ...prev, postponedTime: e.target.value }))}
+                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700">Motivo</label>
+                      <textarea
+                        value={statusModal.postponeReason || ''}
+                        onChange={(e) => setStatusModal((prev) => ({ ...prev, postponeReason: e.target.value }))}
+                        rows={3}
+                        className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                        placeholder="Describe la razón de la postergación"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bg-slate-50 px-6 py-4 sm:px-8 sm:flex sm:flex-row-reverse gap-3">
+              <button
+                type="button"
+                onClick={handleStatusSubmit}
+                className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-sm font-semibold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 sm:w-auto"
+              >
+                Guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusModal({ open: false })}
+                className="mt-3 w-full inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 sm:mt-0 sm:w-auto"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -154,10 +357,12 @@ export default function Appointments() {
                   <tr>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Fecha</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Hora</th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Paciente</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Doctor</th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Especialidad</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Motivo</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Estado</th>
-                    {isAdmin && (
+                    {(isAdmin || isDoctor || isPatient) && (
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-white">Acciones</th>
                     )}
                   </tr>
@@ -179,7 +384,13 @@ export default function Appointments() {
                           {appointment.time}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-white">
+                          {appointment.patientName || '-'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-white">
                           {appointment.doctor}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
+                          {appointment.specialty || '-'}
                         </td>
                         <td className="px-3 py-4 text-sm text-slate-200">
                           {appointment.reason}
@@ -188,15 +399,48 @@ export default function Appointments() {
                           <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-5 ${getStatusColor(appointment.status)}`}>
                             {getStatusText(appointment.status)}
                           </span>
+                          {appointment.status === 'postponed' && appointment.postponedDate && (
+                            <div className="text-[11px] text-amber-200 mt-1">
+                              Nueva: {new Date(appointment.postponedDate).toLocaleDateString('es-ES')} {appointment.postponedTime}
+                            </div>
+                          )}
                         </td>
-                        {isAdmin && (
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200">
+                        {(isAdmin || isDoctor || isPatient) && (
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-200 space-x-3">
+                            {(isAdmin || isPatient) && (
+                              <button
+                                onClick={() => {
+                                  setEditingAppointment(appointment);
+                                  const [nameOnly, specialtyOnly] = appointment.doctor?.split(' (') || ['',''];
+                                  setFormData({
+                                    date: appointment.date.slice(0, 10),
+                                    time: appointment.time,
+                                    reason: appointment.reason,
+                                    doctor: nameOnly.trim(),
+                                    specialty: specialtyOnly ? specialtyOnly.replace(')', '') : appointment.specialty || '',
+                                    patientName: appointment.patientName,
+                                  });
+                                  setShowModal(true);
+                                }}
+                                className="text-indigo-200 hover:text-white font-semibold"
+                              >
+                                Editar
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleDelete(appointment._id)}
-                              className="text-rose-300 hover:text-rose-200 font-semibold"
+                              onClick={() => handleOpenStatusModal(appointment)}
+                              className="text-cyan-200 hover:text-white font-semibold"
                             >
-                              Eliminar
+                              Estado
                             </button>
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDelete(appointment._id)}
+                                className="text-rose-300 hover:text-rose-200 font-semibold"
+                              >
+                                Eliminar
+                              </button>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -211,12 +455,12 @@ export default function Appointments() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/70 px-4 py-8 overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-slate-900/70 backdrop-blur px-4 pt-24 pb-10 overflow-y-auto">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
             <form onSubmit={handleSubmit}>
               <div className="bg-white px-6 pt-6 pb-4 sm:p-8 sm:pb-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-slate-900">Nueva Cita</h3>
+                  <h3 className="text-xl font-semibold text-slate-900">{editingAppointment ? 'Editar Cita' : 'Nueva Cita'}</h3>
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
@@ -226,6 +470,18 @@ export default function Appointments() {
                   </button>
                 </div>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700">Nombre del paciente</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.patientName}
+                      onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                      disabled={isPatient && editingAppointment !== null}
+                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border disabled:bg-slate-100 disabled:text-slate-500"
+                      placeholder="Nombre y apellido del paciente"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-slate-700">Fecha</label>
                     <input
@@ -259,7 +515,8 @@ export default function Appointments() {
                           specialty: selected?.specialty || '',
                         });
                       }}
-                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border bg-white"
+                      disabled={isPatient && editingAppointment !== null}
+                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border bg-white disabled:bg-slate-100 disabled:text-slate-500"
                     >
                       <option value="">Selecciona un doctor</option>
                       {doctors.map((doc) => (
@@ -286,7 +543,8 @@ export default function Appointments() {
                       value={formData.reason}
                       onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                       rows={3}
-                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+                      disabled={isPatient && editingAppointment !== null}
+                      className="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border disabled:bg-slate-100 disabled:text-slate-500"
                       placeholder="Consulta general"
                     />
                   </div>
@@ -296,8 +554,9 @@ export default function Appointments() {
                 <button
                   type="submit"
                   className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 text-sm font-semibold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 sm:w-auto"
+                  disabled={!canCreate}
                 >
-                  Crear Cita
+                  {editingAppointment ? 'Guardar cambios' : 'Crear Cita'}
                 </button>
                 <button
                   type="button"

@@ -24,23 +24,31 @@ export class AppointmentsService {
   }
 
   // Obtener todas las citas (ADMIN ve todas, USER solo las suyas)
-  async findAll(userId: string, userRole: string): Promise<Appointment[]> {
+  async findAll(userId: string, userRole: string, doctorName?: string): Promise<Appointment[]> {
     if (userRole === Role.ADMIN) {
-      // Admin ve todas las citas
       return this.appointmentModel
         .find()
         .populate('patient', 'name email')
         .populate('patientInfo', 'name age gender')
         .sort({ date: -1 })
         .exec();
-    } else {
-      // Usuario normal solo ve sus propias citas
+    }
+
+    if (userRole === Role.DOCTOR && doctorName) {
       return this.appointmentModel
-        .find({ patient: userId })
+        .find({ doctor: new RegExp(`^${doctorName}`, 'i') })
+        .populate('patient', 'name email')
         .populate('patientInfo', 'name age gender')
         .sort({ date: -1 })
         .exec();
     }
+
+    // Paciente ve sus propias citas
+    return this.appointmentModel
+      .find({ patient: userId })
+      .populate('patientInfo', 'name age gender')
+      .sort({ date: -1 })
+      .exec();
   }
 
   // Obtener una cita por ID
@@ -86,7 +94,7 @@ export class AppointmentsService {
   }
 
   // Obtener citas por fecha
-  async findByDate(date: Date, userId: string, userRole: string): Promise<Appointment[]> {
+  async findByDate(date: Date, userId: string, userRole: string, doctorName?: string): Promise<Appointment[]> {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     
@@ -101,7 +109,9 @@ export class AppointmentsService {
     };
 
     // Si no es admin, solo mostrar sus propias citas
-    if (userRole !== Role.ADMIN) {
+    if (userRole === Role.DOCTOR && doctorName) {
+      query.doctor = new RegExp(`^${doctorName}`, 'i');
+    } else if (userRole !== Role.ADMIN) {
       query.patient = userId;
     }
 

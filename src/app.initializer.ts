@@ -13,18 +13,30 @@ export class AppInitializer implements OnModuleInit {
     const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD ?? 'admin123';
     const adminName = process.env.DEFAULT_ADMIN_NAME ?? 'Administrador';
 
-    const existingAdmin = await this.usersService.findByEmail(adminEmail);
-    if (existingAdmin) {
-      return;
+    const patientEmail = process.env.DEFAULT_PATIENT_EMAIL ?? 'paciente@clinica.com';
+    const patientPassword = process.env.DEFAULT_PATIENT_PASSWORD ?? 'paciente123';
+    const patientName = process.env.DEFAULT_PATIENT_NAME ?? 'Paciente Demo';
+
+    const maybeCreate = async (email: string, password: string, name: string, role: Role) => {
+      const existing = await this.usersService.findByEmail(email);
+      if (existing) return;
+      await this.usersService.create({ email, password, name, role });
+      this.logger.log(`Usuario ${role} creado automáticamente: ${email}`);
+    };
+
+    await maybeCreate(adminEmail, adminPassword, adminName, Role.ADMIN);
+
+    const defaultDoctors = [
+      { email: 'carlos@clinica.com', password: 'doctor123', name: 'Carlos Mendoza' },
+      { email: 'sofia@clinica.com', password: 'doctor123', name: 'Sofía Rivas' },
+      { email: 'valentina@clinica.com', password: 'doctor123', name: 'Valentina Torres' },
+      { email: 'alejandro@clinica.com', password: 'doctor123', name: 'Alejandro Ruiz' },
+      { email: 'lucia@clinica.com', password: 'doctor123', name: 'Lucía Fernández' },
+    ];
+    for (const doc of defaultDoctors) {
+      await maybeCreate(doc.email, doc.password, doc.name, Role.DOCTOR);
     }
 
-    await this.usersService.create({
-      email: adminEmail,
-      password: adminPassword,
-      name: adminName,
-      role: Role.ADMIN,
-    });
-
-    this.logger.log(`Usuario admin creado automáticamente: ${adminEmail}`);
+    await maybeCreate(patientEmail, patientPassword, patientName, Role.PATIENT);
   }
 }

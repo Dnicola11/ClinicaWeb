@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<'doctor' | 'patient'>('doctor');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -17,9 +18,19 @@ export default function Login() {
 
     try {
       await login({ email, password });
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const u = JSON.parse(stored) as { role?: string };
+        const isPatientRole = u.role === 'patient' || u.role === 'user';
+        const matches =
+          u.role === 'admin' || // el admin puede entrar aunque no haya botón dedicado
+          (selectedRole === 'doctor' && u.role === 'doctor') ||
+          (selectedRole === 'patient' && isPatientRole);
+        if (!matches) throw new Error('Este usuario no pertenece al rol seleccionado');
+      }
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión');
+      setError(err.response?.data?.message || err.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
@@ -42,7 +53,7 @@ export default function Login() {
           </div>
 
           <h1 className="mt-8 text-4xl font-bold leading-tight">Bienvenido de nuevo</h1>
-          <p className="mt-2 text-slate-300">Accede al panel para gestionar pacientes, usuarios y citas.</p>
+          <p className="mt-2 text-slate-300">Accede al panel para gestionar o atender citas.</p>
 
           <div className="mt-8 grid grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -62,7 +73,7 @@ export default function Login() {
 
         <div className="bg-white rounded-2xl p-10 shadow-2xl shadow-indigo-900/20">
           <h2 className="text-2xl font-semibold text-slate-900">Inicia sesión</h2>
-          <p className="text-sm text-slate-500 mt-1">Usa tus credenciales de administrador o médico.</p>
+          <p className="text-sm text-slate-500 mt-1">Elige tu rol y usa tus credenciales.</p>
 
           <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
             {error && (
@@ -70,6 +81,29 @@ export default function Login() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">Soy</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { value: 'doctor', label: 'Doctor' },
+                  { value: 'patient', label: 'Paciente' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSelectedRole(opt.value as any)}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm font-semibold transition ${
+                      selectedRole === opt.value
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-200 text-slate-700 hover:border-indigo-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">
@@ -103,11 +137,6 @@ export default function Login() {
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
                 placeholder="••••••••"
               />
-              <div className="text-right">
-                <Link to="/forgot-password" className="text-sm font-semibold text-indigo-600 hover:text-indigo-500">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
             </div>
 
             <button
@@ -118,9 +147,11 @@ export default function Login() {
               {loading ? 'Iniciando sesión...' : 'Ingresar'}
             </button>
 
-            <div className="text-sm text-slate-500 text-center">
+            <div className="text-sm text-slate-500 text-center space-y-1">
               <p>Credenciales de prueba</p>
-              <p className="font-mono text-xs mt-1 text-slate-700">admin@clinica.com / admin123</p>
+              <p className="font-mono text-xs text-slate-700">admin@clinica.com / admin123</p>
+              <p className="font-mono text-xs text-slate-700">doctor@clinica.com / doctor123</p>
+              <p className="font-mono text-xs text-slate-700">paciente@clinica.com / paciente123</p>
             </div>
           </form>
         </div>

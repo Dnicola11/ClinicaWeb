@@ -10,6 +10,8 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isDoctor: boolean;
+  isPatient: boolean;
   loading: boolean;
 }
 
@@ -58,6 +60,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     isAuthenticated: !!token && !!user,
     isAdmin: user?.role === 'admin',
+    isDoctor: user?.role === 'doctor',
+    isPatient: user?.role === 'patient' || user?.role === 'user',
     loading,
   };
 
