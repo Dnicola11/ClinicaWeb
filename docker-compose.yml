@@ -21,6 +21,7 @@ services:
       - "2030:2030"
     depends_on:
       - mongo
+    restart: on-failure
     environment:
       - MONGODB_URI=mongodb://mongo:27017/clinica
       - JWT_SECRET=tu_clave_secreta_super_segura_cambiala_en_produccion
@@ -38,6 +39,12 @@ services:
       - clinica-network
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 networks:
   clinica-network:
