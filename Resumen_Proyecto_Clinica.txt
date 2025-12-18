@@ -1,0 +1,30 @@
+﻿Proyecto Clínica Web
+
+Visión
+Ser una plataforma web confiable y moderna para la gestión de citas médicas, mejorando la experiencia de pacientes, doctores y administradores mediante un proceso ágil, seguro y eficiente.
+
+Misión
+Desarrollar una solución web que permita registrar, consultar y actualizar citas médicas de manera organizada, brindando accesos diferenciados según el rol (admin, doctor y paciente) para mejorar la productividad y la atención médica.
+
+Objetivo
+Diseñar e implementar una aplicación web que facilite la programación y administración de citas médicas, asegurando que los pacientes puedan crear y ver sus citas, que los doctores gestionen el estado de las mismas, y que los administradores controlen los usuarios del sistema.
+
+Estructura del Proyecto
+El proyecto está organizado en dos componentes principales: backend y frontend.
+
+1. Backend (API)
+- Implementado con NestJS (Node.js).
+- Carpeta principal: /src.
+- Maneja autenticación, gestión de usuarios y citas.
+
+2. Frontend (UI)
+- Implementado con React + Vite.
+- Carpeta principal: /frontend/src.
+- Contiene las páginas de login, dashboard y gestión de citas.
+
+Lenguajes y Tecnologías
+- TypeScript (backend y frontend).
+- JavaScript (configuración y tooling).
+- HTML y CSS (estructura y estilos del frontend).
+- MongoDB (base de datos).
+- Docker (contenedores para frontend, backend y base de datos).
